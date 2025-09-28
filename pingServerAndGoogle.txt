@@ -5,6 +5,11 @@ $bytesPerPing = 120   # 120 byte per 1 ping (request + reply)
 $totalPing1 = 0
 $totalPing2 = 0
 
+# Ambil adapter jaringan aktif
+$adapter = (Get-NetAdapter | Where-Object Status -eq "Up" | Select-Object -First 1).Name
+$startStats = Get-NetAdapterStatistics -Name $adapter
+$startBytes = $startStats.ReceivedBytes + $startStats.SentBytes
+
 while ($true) {
     $timestamp = Get-Date -Format "HH:mm:ss"
 
@@ -18,17 +23,21 @@ while ($true) {
     $status2 = if ($ping2) { "$($ping2.ResponseTime) ms" } else { "Timeout" }
     if ($ping2) { $totalPing2++ }
 
-    # Hitung kuota
+    # Hitung kuota ping
     $used1MB = [math]::Round(($totalPing1 * $bytesPerPing) / 1MB, 6)
     $used2MB = [math]::Round(($totalPing2 * $bytesPerPing) / 1MB, 6)
 
-    # Tampilkan “tabel” manual
+    # Hitung total internet (ALL traffic per sesi script)
+    $stats = Get-NetAdapterStatistics -Name $adapter
+    $nowBytes = $stats.ReceivedBytes + $stats.SentBytes
+    $sessionBytes = $nowBytes - $startBytes
+    $usedTotal = [math]::Round($sessionBytes / 1MB, 3)
+
+    # Output tabel
     Write-Host "$timestamp " -NoNewline
     Write-Host ("Server DB: " + $status1).PadRight(30) -NoNewline -ForegroundColor Green
     Write-Host ("Google: " + $status2).PadRight(25) -NoNewline -ForegroundColor White
-    Write-Host ("| Kuota: DB=$used1MB MB, Google=$used2MB MB") -ForegroundColor Yellow
+    Write-Host ("| Kuota: DB=$used1MB MB, Google=$used2MB MB, ALL=$usedTotal MB") -ForegroundColor Yellow
 
     Start-Sleep 1
 }
-
-
