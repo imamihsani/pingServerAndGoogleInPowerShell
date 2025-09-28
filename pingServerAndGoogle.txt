@@ -1,21 +1,34 @@
 $target1 = "192.168.1.98"
 $target2 = "8.8.8.8"
 
+$bytesPerPing = 120   # 120 byte per 1 ping (request + reply)
+$totalPing1 = 0
+$totalPing2 = 0
+
 while ($true) {
     $timestamp = Get-Date -Format "HH:mm:ss"
 
     # Ping target 1
     $ping1 = Test-Connection -ComputerName $target1 -Count 1 -ErrorAction SilentlyContinue
     $status1 = if ($ping1) { "$($ping1.ResponseTime) ms" } else { "Timeout" }
+    if ($ping1) { $totalPing1++ }
 
     # Ping target 2
     $ping2 = Test-Connection -ComputerName $target2 -Count 1 -ErrorAction SilentlyContinue
     $status2 = if ($ping2) { "$($ping2.ResponseTime) ms" } else { "Timeout" }
+    if ($ping2) { $totalPing2++ }
+
+    # Hitung kuota
+    $used1MB = [math]::Round(($totalPing1 * $bytesPerPing) / 1MB, 6)
+    $used2MB = [math]::Round(($totalPing2 * $bytesPerPing) / 1MB, 6)
 
     # Tampilkan “tabel” manual
     Write-Host "$timestamp " -NoNewline
     Write-Host ("Server DB: " + $status1).PadRight(30) -NoNewline -ForegroundColor Green
-    Write-Host ("Google: " + $status2) -ForegroundColor White
+    Write-Host ("Google: " + $status2).PadRight(25) -NoNewline -ForegroundColor White
+    Write-Host ("| Kuota: DB=$used1MB MB, Google=$used2MB MB") -ForegroundColor Yellow
 
     Start-Sleep 1
 }
+
+
